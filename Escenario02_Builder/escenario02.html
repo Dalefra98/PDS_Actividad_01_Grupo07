@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Escenario 02: Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F6F8FB; --surface:#FFFFFF; --ink:#16212E; --muted:#5A6878; --line:#D9E0E8;
+  --code-bg:#EEF2F7; --cur:#DCE7FF; --cur-ink:#1B3F99;
+  --client:#5C6B7A; --client-bg:#EDF0F3;
+  --creator:#3D4FC4; --creator-bg:#E8EBFC;
+  --product:#0E7A68; --product-bg:#E2F4F0;
+  --warn:#9A5B00; --ok:#0E7A68;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F151D; --surface:#17202B; --ink:#E6ECF2; --muted:#9AA8B6; --line:#2A3644;
+    --code-bg:#121A24; --cur:#22356B; --cur-ink:#C9D8FF;
+    --client:#AEBAC6; --client-bg:#222D39;
+    --creator:#A9B4FF; --creator-bg:#252C55;
+    --product:#7CDCC6; --product-bg:#16362F;
+    --warn:#F2B661; --ok:#7CDCC6;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F151D; --surface:#17202B; --ink:#E6ECF2; --muted:#9AA8B6; --line:#2A3644;
+  --code-bg:#121A24; --cur:#22356B; --cur-ink:#C9D8FF;
+  --client:#AEBAC6; --client-bg:#222D39;
+  --creator:#A9B4FF; --creator-bg:#252C55;
+  --product:#7CDCC6; --product-bg:#16362F;
+  --warn:#F2B661; --ok:#7CDCC6;
+  color-scheme: dark;
+}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px;line-height:1.6}
+main{max-width:1080px;margin:0 auto;padding:32px 20px 64px}
+h1{font-size:30px;font-weight:600;letter-spacing:-0.01em;margin:0 0 6px}
+h2{font-size:20px;font-weight:600;margin:0 0 4px}
+.lead{color:var(--muted);margin:0 0 24px;max-width:70ch}
+code,pre,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--creator);outline-offset:2px}
+
+.switch{display:flex;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;width:fit-content;max-width:100%;margin-bottom:28px;background:var(--surface)}
+.switch button{border:0;background:transparent;padding:10px 18px;font-size:15px;color:var(--muted)}
+.switch button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+
+section{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:20px}
+.sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.sec-head p{margin:0;color:var(--muted);font-size:14px}
+
+.opts{display:flex;gap:6px;flex-wrap:wrap}
+.opts button{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 12px;font-size:14px}
+.opts button[aria-pressed="true"]{border-color:var(--creator);background:var(--creator-bg);color:var(--creator)}
+
+.sim{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px}
+@media (max-width:820px){.sim{grid-template-columns:1fr}}
+.code{background:var(--code-bg);border-radius:10px;padding:12px 8px;overflow-x:auto;font-size:13px;line-height:1.75;margin:0}
+.code .ln{display:block;padding:0 10px;border-radius:5px;white-space:pre;color:var(--muted);opacity:.55}
+.code .ln.done{opacity:1;color:var(--ink)}
+.code .ln.cur{opacity:1;background:var(--cur);color:var(--cur-ink)}
+.side{display:flex;flex-direction:column;gap:12px}
+.explain{border-left:3px solid var(--creator);padding:4px 0 4px 14px;min-height:72px}
+.explain .step{font-size:13px;color:var(--muted)}
+.explain p{margin:2px 0 0}
+.state{border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.state h3{font-size:14px;font-weight:600;margin:0 0 6px}
+.kv{display:flex;justify-content:space-between;gap:12px;font-size:14px;padding:4px 0;border-bottom:1px dashed var(--line)}
+.kv:last-child{border-bottom:0}
+.kv span:first-child{color:var(--muted)}
+.kv.new span:last-child{color:var(--creator);font-weight:500}
+.empty{color:var(--muted);font-size:14px;font-style:italic}
+.state.final{border-color:var(--ok)}
+.state.final h3{color:var(--ok)}
+.controls{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.controls button{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 14px;font-size:14px}
+.controls .primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.controls button:disabled{opacity:.4;cursor:default}
+
+.classes{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.cls{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--bg);transition:border-color .2s, box-shadow .2s}
+.cls.lit{border-color:var(--creator);box-shadow:0 0 0 2px var(--creator-bg)}
+.cls-name{font-family:"IBM Plex Mono",monospace;font-weight:500;font-size:15px}
+.cls-kind{font-size:12px;color:var(--muted);font-style:italic}
+.role{display:inline-block;font-size:12px;padding:1px 8px;border-radius:20px;margin:6px 0 8px}
+.role.client{background:var(--client-bg);color:var(--client)}
+.role.creator{background:var(--creator-bg);color:var(--creator)}
+.role.product{background:var(--product-bg);color:var(--product)}
+.mlist{display:flex;flex-direction:column;gap:4px}
+.mlist button{text-align:left;border:1px solid transparent;background:var(--surface);border-radius:6px;padding:5px 8px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;overflow-wrap:anywhere}
+.mlist button:hover{border-color:var(--line)}
+.mlist button[aria-pressed="true"]{border-color:var(--creator);color:var(--creator)}
+.detail{margin-top:16px;border-top:1px solid var(--line);padding-top:16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:820px){.detail{grid-template-columns:1fr}}
+.detail h3{font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:500;margin:0 0 6px;overflow-wrap:anywhere}
+.detail p{margin:0 0 8px}
+.detail .code .ln{opacity:1;color:var(--ink)}
+
+.map{width:100%;border-collapse:collapse;font-size:15px}
+.map th,.map td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.map th{font-size:13px;color:var(--muted);font-weight:500}
+.map td:first-child{font-style:italic;width:50%}
+.tblwrap{overflow-x:auto}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:13px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Escenario 02: Builder</h1>
+  <p class="lead">Ejecuta el escenario paso a paso y revisa qué hace cada clase y cada método.</p>
+
+  <section aria-labelledby="h-sim">
+    <div class="sec-head">
+      <div><h2 id="h-sim">Ejecución paso a paso</h2><p id="sim-sub"></p></div>
+      <div class="opts" id="opts" role="group" aria-label="Caso"></div>
+    </div>
+    <div class="sim">
+      <div>
+        <pre class="code" id="sim-code" aria-live="off"></pre>
+        <div class="controls">
+          <button id="b-prev" onclick="prev()">Paso anterior</button>
+          <button id="b-next" class="primary" onclick="next()">Siguiente paso</button>
+          <button onclick="resetSim()">Reiniciar</button>
+        </div>
+      </div>
+      <div class="side">
+        <div class="explain" aria-live="polite"><div class="step" id="sim-step"></div><p id="sim-msg"></p></div>
+        <div class="state" id="state-a"><h3 id="state-a-h"></h3><div id="state-a-b"></div></div>
+        <div class="state" id="state-b"><h3 id="state-b-h"></h3><div id="state-b-b"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-cls">
+    <div class="sec-head">
+      <div><h2 id="h-cls">Clases y métodos</h2><p>Toca un método para ver su código y qué hace. En la ejecución, se resaltan las clases que participan.</p></div>
+      <div class="legend"><span class="role client">Cliente</span><span class="role creator" id="leg-creator">Creador</span><span class="role product">Producto</span></div>
+    </div>
+    <div class="classes" id="classes"></div>
+    <div class="detail" id="detail"></div>
+  </section>
+
+  <section aria-labelledby="h-map">
+    <h2 id="h-map">Cómo responde al enunciado</h2>
+    <div class="tblwrap"><table class="map"><thead><tr><th>Lo que pide el enunciado</th><th>Cómo se resuelve</th></tr></thead><tbody id="map"></tbody></table></div>
+  </section>
+</main>
+
+<script>
+const E = {
+e1:{
+  sub:'Selecciona el tipo de vehículo que indica el cliente.',
+  creatorLabel:'Creador',
+  stateA:'Lo que sabe la Aplicacion', stateB:'Resultado',
+  classes:[
+    {n:'Aplicacion',k:'clase concreta',r:'client',rl:'Client',m:[
+      {f:'registrarVehiculo(creador, datos)',c:
+`public double registrarVehiculo(CreadorVehiculo creador,
+                                DatosVehiculo datos) {
+    Vehiculo vehiculo = creador.crearVehiculo(datos);
+    double costo = vehiculo.obtenerCostoMatricula();
+    return costo;
+}`,x:'Es la lógica principal del enunciado. Recibe el creador ya elegido y los datos del cliente. Le pide el vehículo al creador y luego calcula la matrícula. Fíjate que nunca escribe Auto, Camioneta ni Camion: solo usa CreadorVehiculo y Vehiculo. Por eso no se modifica cuando llegan nuevos tipos.'}]},
+    {n:'CreadorVehiculo',k:'clase abstracta',r:'creator',rl:'Creator',m:[
+      {f:'crearVehiculo(datos): Vehiculo',c:
+`public abstract Vehiculo crearVehiculo(DatosVehiculo datos);`,x:'Es el factory method que le da nombre al patrón. Solo declara la regla: todo creador debe saber crear un vehículo. No dice cuál; eso lo deciden las clases hijas. Devuelve Vehiculo (el tipo abstracto), nunca el concreto.'}]},
+    {n:'CreadorAuto',k:'clase concreta',r:'creator',rl:'Concrete Creator',m:[
+      {f:'crearVehiculo(datos): Vehiculo',c:
+`@Override
+public Vehiculo crearVehiculo(DatosVehiculo datos) {
+    return new Auto(datos);
+}`,x:'Implementa el factory method creando un Auto. Es el único lugar de todo el sistema donde aparece new Auto. Así las instrucciones de creación no quedan regadas por la aplicación.'}]},
+    {n:'CreadorCamioneta',k:'clase concreta',r:'creator',rl:'Concrete Creator',m:[
+      {f:'crearVehiculo(datos): Vehiculo',c:
+`@Override
+public Vehiculo crearVehiculo(DatosVehiculo datos) {
+    return new Camioneta(datos);
+}`,x:'Igual que CreadorAuto, pero crea una Camioneta. Cada creador concreto sabe crear un único tipo.'}]},
+    {n:'CreadorCamion',k:'clase concreta',r:'creator',rl:'Concrete Creator',m:[
+      {f:'crearVehiculo(datos): Vehiculo',c:
+`@Override
+public Vehiculo crearVehiculo(DatosVehiculo datos) {
+    return new Camion(datos);
+}`,x:'Crea un Camion. Para agregar motocicletas se haría un CreadorMotocicleta idéntico, sin tocar ninguno de los existentes.'}]},
+    {n:'Vehiculo',k:'clase abstracta',r:'product',rl:'Product',m:[
+      {f:'Vehiculo(datos)',c:
+`Vehiculo(DatosVehiculo d) {
+    this.placa = d.placa;
+    this.marca = d.marca;
+    this.modelo = d.modelo;
+    this.anioFabricacion = d.anioFabricacion;
+    this.avaluo = d.avaluo;
+}`,x:'Constructor que guarda la información general que comparten todos los vehículos: placa, marca, modelo, año de fabricación y avalúo. Los hijos lo llaman con super(d).'},
+      {f:'antiguedad(): int',c:
+`protected int antiguedad() {
+    return Year.now().getValue() - anioFabricacion;
+}`,x:'Método de apoyo protegido: lo pueden usar los hijos para calcular cuántos años tiene el vehículo. El Auto lo usa en su cálculo.'},
+      {f:'obtenerCostoMatricula(): double',c:
+`public abstract double obtenerCostoMatricula();`,x:'Es el contrato común: la operación para obtener el costo de matrícula que pide el enunciado. Es abstracta, así que cada tipo está obligado a implementarla con su propia lógica.'}]},
+    {n:'Auto',k:'clase concreta',r:'product',rl:'Concrete Product',m:[
+      {f:'obtenerCostoMatricula(): double',c:
+`@Override
+public double obtenerCostoMatricula() {
+    double base = avaluo * 0.015;
+    double descuento = Math.min(antiguedad() * 0.02, 0.5);
+    return base * (1 - descuento);
+}`,x:'El Auto considera avalúo y antigüedad: 1.5% del avalúo, con 2% de descuento por cada año (máximo 50%). La fórmula es ilustrativa.'}]},
+    {n:'Camioneta',k:'clase concreta',r:'product',rl:'Concrete Product',m:[
+      {f:'obtenerCostoMatricula(): double',c:
+`@Override
+public double obtenerCostoMatricula() {
+    double base = avaluo * 0.018 + capacidad * 0.05;
+    return "comercial".equalsIgnoreCase(uso)
+            ? base * 1.2 : base;
+}`,x:'La Camioneta agrega capacidad y uso, como dice el enunciado. Si es de uso comercial lleva 20% de recargo. Tiene atributos propios (capacidad, uso) que el Auto no tiene.'}]},
+    {n:'Camion',k:'clase concreta',r:'product',rl:'Concrete Product',m:[
+      {f:'obtenerCostoMatricula(): double',c:
+`@Override
+public double obtenerCostoMatricula() {
+    return avaluo * 0.01 + tonelaje * 25;
+}`,x:'El Camion usa el tonelaje: 1% del avalúo más 25 por cada tonelada. Cada vehículo calcula distinto, pero todos responden al mismo método.'}]}
+  ],
+  cases:{
+    auto:{label:'Auto',steps:[
+      {c:'DatosVehiculo d = new DatosVehiculo("PBA-1234", "Kia", "Rio", 2020, 15000);',lit:[],a:[['Datos del cliente','PBA-1234, Kia Rio 2020, avalúo 15000']],m:'El cliente proporciona su información: tipo Auto, placa, marca, modelo, año y avalúo.'},
+      {c:'CreadorVehiculo creador = creadores.get("auto");',lit:['CreadorAuto'],a:[['Creador elegido','CreadorVehiculo (adentro: CreadorAuto)']],m:'Selección en ejecución: según el tipo que dijo el cliente se toma CreadorAuto. La aplicación lo trata como CreadorVehiculo.'},
+      {c:'Vehiculo vehiculo = creador.crearVehiculo(d);',lit:['CreadorVehiculo','CreadorAuto','Auto'],a:[['Vehículo recibido','Vehiculo (adentro: Auto)']],m:'La creación se delega: CreadorAuto ejecuta new Auto(d). La aplicación recibe un Vehiculo y no sabe que es un Auto.'},
+      {c:'double costo = vehiculo.obtenerCostoMatricula();',lit:['Vehiculo','Auto'],a:[],b:[['Tipo real','Auto'],['Cálculo','15000 × 1.5% con descuento por antigüedad'],['Costo matrícula','$198.00']],m:'Por polimorfismo se ejecuta la lógica del Auto. La aplicación escribió el mismo código que usaría con cualquier vehículo.'}]},
+    camioneta:{label:'Camioneta',steps:[
+      {c:'DatosVehiculo d = new DatosVehiculo("GBC-5678", "Toyota", "Hilux", 2022, 35000);',lit:[],a:[['Datos del cliente','GBC-5678, Toyota Hilux 2022, avalúo 35000']],m:'El cliente proporciona su información general.'},
+      {c:'d.capacidad = 1000;  d.uso = "comercial";',lit:[],a:[['Datos extra','capacidad 1000 kg, uso comercial']],m:'La camioneta incluye datos propios: capacidad y uso.'},
+      {c:'CreadorVehiculo creador = creadores.get("camioneta");',lit:['CreadorCamioneta'],a:[['Creador elegido','CreadorVehiculo (adentro: CreadorCamioneta)']],m:'Se selecciona en ejecución el creador de camionetas.'},
+      {c:'Vehiculo vehiculo = creador.crearVehiculo(d);',lit:['CreadorVehiculo','CreadorCamioneta','Camioneta'],a:[['Vehículo recibido','Vehiculo (adentro: Camioneta)']],m:'CreadorCamioneta hace new Camioneta(d). La aplicación sigue viendo solo un Vehiculo.'},
+      {c:'double costo = vehiculo.obtenerCostoMatricula();',lit:['Vehiculo','Camioneta'],a:[],b:[['Tipo real','Camioneta'],['Cálculo','(35000 × 1.8% + 1000 × 0.05) × 1.2'],['Costo matrícula','$816.00']],m:'Se ejecuta la lógica de la Camioneta, con su recargo por uso comercial.'}]},
+    camion:{label:'Camión',steps:[
+      {c:'DatosVehiculo d = new DatosVehiculo("TCA-9012", "Hino", "500", 2018, 60000);',lit:[],a:[['Datos del cliente','TCA-9012, Hino 500 2018, avalúo 60000']],m:'El cliente proporciona su información general.'},
+      {c:'d.tonelaje = 12;  d.capacidadCarga = 8000;',lit:[],a:[['Datos extra','12 toneladas, carga 8000 kg']],m:'El camión requiere información adicional: tonelaje y capacidad de carga.'},
+      {c:'CreadorVehiculo creador = creadores.get("camion");',lit:['CreadorCamion'],a:[['Creador elegido','CreadorVehiculo (adentro: CreadorCamion)']],m:'Se selecciona en ejecución el creador de camiones.'},
+      {c:'Vehiculo vehiculo = creador.crearVehiculo(d);',lit:['CreadorVehiculo','CreadorCamion','Camion'],a:[['Vehículo recibido','Vehiculo (adentro: Camion)']],m:'CreadorCamion hace new Camion(d).'},
+      {c:'double costo = vehiculo.obtenerCostoMatricula();',lit:['Vehiculo','Camion'],a:[],b:[['Tipo real','Camion'],['Cálculo','60000 × 1% + 12 × 25'],['Costo matrícula','$900.00']],m:'Se ejecuta la lógica del Camion. Compara los tres casos: solo cambian la línea del creador y los datos; las líneas de crearVehiculo y obtenerCostoMatricula son idénticas.'}]}
+  },
+  map:[
+    ['Todos comparten información general y una operación para obtener el costo de matrícula','Vehiculo (abstracta) con los atributos comunes y obtenerCostoMatricula()'],
+    ['Cada tipo implementa su propia lógica manteniendo un contrato común','Auto, Camioneta y Camion sobrescriben obtenerCostoMatricula()'],
+    ['Delegar adecuadamente la creación del vehículo','CreadorVehiculo y sus creadores concretos; el new vive solo ahí'],
+    ['La selección se realiza en ejecución a partir de la información del cliente','Se elige el creador según el tipo indicado por el cliente'],
+    ['Trabajar con el vehículo sin depender de Auto, Camioneta o Camión','Aplicacion solo usa CreadorVehiculo y Vehiculo'],
+    ['Incorporar motocicletas, buses o eléctricos sin modificar la lógica principal','Nueva clase de vehículo + su creador; Aplicacion no cambia (principio Abierto/Cerrado)']
+  ]
+},
+e2:{
+  sub:'Elige qué activo construir.',
+  creatorLabel:'Builder',
+  stateA:'ActivoFijoBuilder (borrador)', stateB:'ActivoFijo (objeto final)',
+  classes:[
+    {n:'ModuloActivos',k:'clase concreta',r:'client',rl:'Client',m:[
+      {f:'registrar(activo)',c:
+`public void registrar(ActivoFijo activo) {
+    System.out.println("Activo registrado:");
+    System.out.println(activo);
+}`,x:'Es el módulo del enunciado que registra los activos. Usa el builder para construirlos y luego recibe el ActivoFijo ya listo.'}]},
+    {n:'ActivoFijoBuilder',k:'clase concreta',r:'creator',rl:'Builder',m:[
+      {f:'ActivoFijoBuilder(codigo, nombre, precio)',c:
+`public ActivoFijoBuilder(String codigo,
+                         String nombre, double precio) {
+    this.codigo = codigo;
+    this.nombre = nombre;
+    this.precio = precio;
+}`,x:'El constructor recibe los tres datos obligatorios. Es imposible empezar a construir un activo sin código, nombre y precio. Esto cumple "establecer primero la información obligatoria".'},
+      {f:'marca(valor): ActivoFijoBuilder',c:
+`public ActivoFijoBuilder marca(String marca) {
+    this.marca = marca;
+    return this;
+}`,x:'Agrega un dato opcional y devuelve this (el mismo builder). Gracias a ese return this se pueden encadenar llamadas: .marca().modelo().build(). El nombre del método deja explícito qué dato se incorpora.'},
+      {f:'modelo(valor): ActivoFijoBuilder',c:
+`public ActivoFijoBuilder modelo(String modelo) {
+    this.modelo = modelo;
+    return this;
+}`,x:'Mismo mecanismo que marca(): guarda el valor en el borrador y devuelve el builder.'},
+      {f:'numeroSerie(valor): ActivoFijoBuilder',c:
+`public ActivoFijoBuilder numeroSerie(String numeroSerie) {
+    this.numeroSerie = numeroSerie;
+    return this;
+}`,x:'Opcional típico de equipos electrónicos. Una mesa simplemente no lo llama.'},
+      {f:'ubicacion(valor): ActivoFijoBuilder',c:
+`public ActivoFijoBuilder ubicacion(String ubicacion) {
+    this.ubicacion = ubicacion;
+    return this;
+}`,x:'Registra dónde está el activo. Opcional.'},
+      {f:'custodio(valor): ActivoFijoBuilder',c:
+`public ActivoFijoBuilder custodio(String custodio) {
+    this.custodio = custodio;
+    return this;
+}`,x:'Registra la persona responsable del activo. Opcional.'},
+      {f:'fechaAdquisicion(fecha): ActivoFijoBuilder',c:
+`public ActivoFijoBuilder fechaAdquisicion(LocalDate fecha) {
+    this.fechaAdquisicion = fecha;
+    return this;
+}`,x:'Fecha en que se compró el activo. Es necesaria si se registra garantía (lo valida build()).'},
+      {f:'garantiaMeses(meses): ActivoFijoBuilder',c:
+`public ActivoFijoBuilder garantiaMeses(int meses) {
+    this.garantiaMeses = meses;
+    return this;
+}`,x:'Período de garantía en meses. Opcional.'},
+      {f:'proveedor(valor): ActivoFijoBuilder',c:
+`public ActivoFijoBuilder proveedor(String proveedor) {
+    this.proveedor = proveedor;
+    return this;
+}`,x:'Quién vendió el activo. Opcional.'},
+      {f:'caracteristica(nombre, valor): ActivoFijoBuilder',c:
+`public ActivoFijoBuilder caracteristica(String nombre,
+                                        String valor) {
+    this.caracteristicas.put(nombre, valor);
+    return this;
+}`,x:'Las "características técnicas" del enunciado. Cada activo agrega las suyas: procesador para un computador, material o dimensiones para una mesa. Así no hace falta un atributo por cada característica posible.'},
+      {f:'observaciones(valor): ActivoFijoBuilder',c:
+`public ActivoFijoBuilder observaciones(String obs) {
+    this.observaciones = obs;
+    return this;
+}`,x:'Notas libres sobre el activo. Opcional.'},
+      {f:'build(): ActivoFijo',c:
+`public ActivoFijo build() {
+    if (codigo == null || codigo.isBlank())
+        throw new IllegalStateException("Código obligatorio");
+    if (nombre == null || nombre.isBlank())
+        throw new IllegalStateException("Nombre obligatorio");
+    if (precio <= 0)
+        throw new IllegalStateException("Precio debe ser > 0");
+    if (garantiaMeses != null && fechaAdquisicion == null)
+        throw new IllegalStateException("Garantía sin fecha");
+    return new ActivoFijo(this);
+}`,x:'El paso final, como el botón Enviar de un formulario. Valida los obligatorios y las combinaciones de opcionales, y solo si todo está bien crea el ActivoFijo. Cumple "obtener finalmente un objeto correctamente configurado".'}]},
+    {n:'ActivoFijo',k:'clase concreta',r:'product',rl:'Product',m:[
+      {f:'ActivoFijo(builder)',c:
+`ActivoFijo(ActivoFijoBuilder b) {
+    this.codigo = b.codigo;
+    this.nombre = b.nombre;
+    this.precio = b.precio;
+    this.marca = b.marca;
+    // ... copia el resto de datos del borrador
+}`,x:'Constructor no público: solo lo usa el builder dentro de build(). Copia todos los datos del borrador. Ya no hay constructores sobrecargados con decenas de parámetros.'},
+      {f:'getCodigo() / getNombre() / getPrecio()',c:
+`public String getCodigo() { return codigo; }
+public String getNombre() { return nombre; }
+public double getPrecio() { return precio; }`,x:'Solo hay getters, no setters: una vez construido, el activo no se modifica (es inmutable). Toda la configuración ocurre en el builder.'},
+      {f:'toString()',c:
+`@Override
+public String toString() {
+    // muestra solo los datos que
+    // el activo realmente tiene
+}`,x:'Imprime el activo mostrando únicamente los datos registrados. Los opcionales que no se usaron simplemente no aparecen.'}]}
+  ],
+  cases:{
+    pc:{label:'Computador',steps:[
+      {c:'ActivoFijo pc = new ActivoFijoBuilder("AF001", "Computador", 1200)',lit:['ActivoFijoBuilder'],a:[['Código','AF001'],['Nombre','Computador'],['Precio','1200']],m:'Se crea el borrador con los tres obligatorios. Sin ellos no se puede empezar.',method:'ActivoFijoBuilder(codigo, nombre, precio)'},
+      {c:'        .marca("Dell")',lit:['ActivoFijoBuilder'],a:[['Marca','Dell']],m:'Opcional. El método dice explícitamente qué dato se agrega, y devuelve el mismo builder para seguir encadenando.',method:'marca(valor): ActivoFijoBuilder'},
+      {c:'        .modelo("Latitude")',lit:['ActivoFijoBuilder'],a:[['Modelo','Latitude']],m:'Otro opcional. Nada de null ni posiciones confusas.',method:'modelo(valor): ActivoFijoBuilder'},
+      {c:'        .numeroSerie("SN-88231")',lit:['ActivoFijoBuilder'],a:[['N° serie','SN-88231']],m:'Solo se agrega lo que este activo realmente tiene.',method:'numeroSerie(valor): ActivoFijoBuilder'},
+      {c:'        .caracteristica("Procesador", "Intel i7")',lit:['ActivoFijoBuilder'],a:[['Procesador','Intel i7']],m:'Característica técnica propia del computador.',method:'caracteristica(nombre, valor): ActivoFijoBuilder'},
+      {c:'        .fechaAdquisicion(LocalDate.of(2026, 3, 15))',lit:['ActivoFijoBuilder'],a:[['Fecha adquisición','2026-03-15']],m:'Se registra la fecha de compra, necesaria para la garantía.',method:'fechaAdquisicion(fecha): ActivoFijoBuilder'},
+      {c:'        .garantiaMeses(36)',lit:['ActivoFijoBuilder'],a:[['Garantía','36 meses']],m:'Último opcional del computador.',method:'garantiaMeses(meses): ActivoFijoBuilder'},
+      {c:'        .build();',lit:['ActivoFijoBuilder','ActivoFijo'],a:[],final:true,m:'build() valida todo y crea el ActivoFijo definitivo. Recién aquí existe el objeto final.',method:'build(): ActivoFijo'}]},
+    mesa:{label:'Mesa',steps:[
+      {c:'ActivoFijo mesa = new ActivoFijoBuilder("AF002", "Mesa", 120)',lit:['ActivoFijoBuilder'],a:[['Código','AF002'],['Nombre','Mesa'],['Precio','120']],m:'Mismos tres obligatorios, como cualquier activo.',method:'ActivoFijoBuilder(codigo, nombre, precio)'},
+      {c:'        .caracteristica("Material", "Madera")',lit:['ActivoFijoBuilder'],a:[['Material','Madera']],m:'La mesa no tiene marca ni serie, así que ni se mencionan. Nada de valores vacíos.',method:'caracteristica(nombre, valor): ActivoFijoBuilder'},
+      {c:'        .caracteristica("Dimensiones", "120x60x75 cm")',lit:['ActivoFijoBuilder'],a:[['Dimensiones','120x60x75 cm']],m:'Otra característica propia de la mesa.',method:'caracteristica(nombre, valor): ActivoFijoBuilder'},
+      {c:'        .ubicacion("Cuenca - Bodega 2")',lit:['ActivoFijoBuilder'],a:[['Ubicación','Cuenca - Bodega 2']],m:'Dato opcional de ubicación.',method:'ubicacion(valor): ActivoFijoBuilder'},
+      {c:'        .custodio("Juan Pérez")',lit:['ActivoFijoBuilder'],a:[['Custodio','Juan Pérez']],m:'Dato opcional del responsable.',method:'custodio(valor): ActivoFijoBuilder'},
+      {c:'        .build();',lit:['ActivoFijoBuilder','ActivoFijo'],a:[],final:true,m:'build() valida y crea el ActivoFijo. Configuración distinta, mismo builder, sin constructores sobrecargados.',method:'build(): ActivoFijo'}]},
+    error:{label:'Impresora con error',steps:[
+      {c:'ActivoFijo imp = new ActivoFijoBuilder("AF003", "Impresora", 300)',lit:['ActivoFijoBuilder'],a:[['Código','AF003'],['Nombre','Impresora'],['Precio','300']],m:'Se inicia el borrador con los obligatorios.',method:'ActivoFijoBuilder(codigo, nombre, precio)'},
+      {c:'        .marca("HP")',lit:['ActivoFijoBuilder'],a:[['Marca','HP']],m:'Opcional.',method:'marca(valor): ActivoFijoBuilder'},
+      {c:'        .garantiaMeses(12)',lit:['ActivoFijoBuilder'],a:[['Garantía','12 meses']],m:'Se registra garantía, pero no se indicó la fecha de adquisición.',method:'garantiaMeses(meses): ActivoFijoBuilder'},
+      {c:'        .build();',lit:['ActivoFijoBuilder'],a:[],error:'IllegalStateException: Garantía sin fecha de adquisición',m:'build() detecta la combinación inválida y no crea el activo. Así nunca se registra un activo mal configurado.',method:'build(): ActivoFijo'}]}
+  },
+  map:[
+    ['Registrar obligatoriamente código, nombre y precio','El constructor de ActivoFijoBuilder los exige, y build() valida que sean correctos'],
+    ['Datos opcionales que no todos los activos poseen','Un método encadenable por cada opcional; solo se llaman los que aplican'],
+    ['Evitar múltiples constructores con diferentes combinaciones','Un solo builder sirve para cualquier configuración'],
+    ['La llamada con muchos parámetros y null es difícil de leer','Cada método nombra el dato: .marca("Dell"), .custodio("Juan Pérez")'],
+    ['Construir progresivamente, primero lo obligatorio y luego lo que corresponda','Constructor del builder + métodos encadenados, en el orden que se quiera'],
+    ['Obtener finalmente un objeto correctamente configurado','build() valida y crea un ActivoFijo inmutable'],
+    ['No obligar a proporcionar valores vacíos','Lo que no aplica simplemente no se llama']
+  ]
+}};
+
+let esc='e2', caseKey='pc', paso=0, selMethod=null;
+
+function esc_(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function setEsc(k){
+  esc=k; caseKey=Object.keys(E[k].cases)[0]; paso=0; selMethod=null;
+    renderAll();
+}
+function setCase(k){caseKey=k;paso=0;renderSim();}
+function next(){if(paso<steps().length){paso++;syncMethod();renderSim();}}
+function prev(){if(paso>0){paso--;syncMethod();renderSim();}}
+function resetSim(){paso=0;renderSim();}
+function steps(){return E[esc].cases[caseKey].steps;}
+function syncMethod(){const s=steps()[paso-1];if(s&&s.method){selMethod='ActivoFijoBuilder|'+s.method;renderClasses();}}
+
+function renderAll(){
+  const d=E[esc];
+  document.getElementById('sim-sub').textContent=d.sub;
+  document.getElementById('leg-creator').textContent=d.creatorLabel;
+  document.getElementById('opts').innerHTML=Object.entries(d.cases).map(([k,v])=>
+    `<button aria-pressed="${k===caseKey}" onclick="setCase('${k}')">${v.label}</button>`).join('');
+  document.getElementById('map').innerHTML=d.map.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+  renderSim(); renderClasses();
+}
+
+function renderSim(){
+  const d=E[esc], st=steps();
+  document.querySelectorAll('#opts button').forEach(b=>b.setAttribute('aria-pressed',b.textContent===d.cases[caseKey].label));
+  document.getElementById('sim-code').innerHTML=st.map((s,i)=>
+    `<span class="ln ${i<paso-1?'done':i===paso-1?'cur':''}">${esc_(s.c)}</span>`).join('');
+  document.getElementById('sim-step').textContent=paso===0?'Listo para empezar':`Paso ${paso} de ${st.length}`;
+  document.getElementById('sim-msg').textContent=paso===0?'Presiona "Siguiente paso" para ejecutar la primera línea.':st[paso-1].m;
+  document.getElementById('b-prev').disabled=paso===0;
+  document.getElementById('b-next').disabled=paso===st.length;
+
+  let A=[],B=null,newKeys=[],fin=false,err=null;
+  for(let i=0;i<paso;i++){
+    const s=st[i];
+    if(esc==='e1'){ if(s.a.length){A=A.concat(s.a);} if(s.b)B=s.b; }
+    else { A=A.concat(s.a); if(s.final)fin=true; if(s.error)err=s.error; }
+    if(i===paso-1)newKeys=(s.a||[]).map(x=>x[0]);
+  }
+  document.getElementById('state-a-h').textContent=d.stateA;
+  document.getElementById('state-b-h').textContent=d.stateB;
+  document.getElementById('state-a-b').innerHTML=A.length?A.map(r=>`<div class="kv ${newKeys.includes(r[0])?'new':''}"><span>${r[0]}</span><span>${esc_(r[1])}</span></div>`).join(''):'<div class="empty">Vacío</div>';
+  let bHtml;
+  if(esc==='e1'){bHtml=B?B.map(r=>`<div class="kv"><span>${r[0]}</span><span>${esc_(r[1])}</span></div>`).join(''):'<div class="empty">Aún no se calcula la matrícula</div>';}
+  else if(err){bHtml=`<div class="kv"><span style="color:var(--warn)">No se creó el activo</span></div><div class="empty" style="font-style:normal;color:var(--warn)">${esc_(err)}</div>`;}
+  else if(fin){bHtml=A.map(r=>`<div class="kv"><span>${r[0]}</span><span>${esc_(r[1])}</span></div>`).join('');}
+  else{bHtml='<div class="empty">Aún no existe. Se crea en build()</div>';}
+  document.getElementById('state-b-b').innerHTML=bHtml;
+  document.getElementById('state-b').classList.toggle('final',(esc==='e1'&&!!B)||(esc==='e2'&&fin));
+
+  const lit=paso?st[paso-1].lit:[];
+  document.querySelectorAll('.cls').forEach(c=>c.classList.toggle('lit',lit.includes(c.dataset.n)));
+}
+
+function renderClasses(){
+  const d=E[esc];
+  if(!selMethod){selMethod=d.classes[0].n+'|'+d.classes[0].m[0].f;}
+  const lit=paso?steps()[paso-1].lit:[];
+  document.getElementById('classes').innerHTML=d.classes.map(c=>`
+    <div class="cls ${lit.includes(c.n)?'lit':''}" data-n="${c.n}">
+      <div class="cls-name">${c.n}</div>
+      <div class="cls-kind">${c.k}</div>
+      <span class="role ${c.r}">${c.rl}</span>
+      <div class="mlist">${c.m.map(m=>`<button aria-pressed="${(c.n+'|'+m.f)===selMethod}" onclick="pick('${c.n}','${m.f.replace(/'/g,"\\'")}')">${esc_(m.f)}</button>`).join('')}</div>
+    </div>`).join('');
+  let found=null,owner=null;
+  d.classes.forEach(c=>c.m.forEach(m=>{if((c.n+'|'+m.f)===selMethod&&!found){found=m;owner=c;}}));
+  if(!found){found=d.classes[0].m[0];owner=d.classes[0];}
+  document.getElementById('detail').innerHTML=`
+    <div><h3>${owner.n}.${esc_(found.f)}</h3><p>${found.x}</p></div>
+    <pre class="code">${found.c.split('\n').map(l=>`<span class="ln">${esc_(l)}</span>`).join('')}</pre>`;
+}
+function pick(cls,f){selMethod=cls+'|'+f;renderClasses();}
+
+renderAll();
+</script>
+</body>
+</html>
